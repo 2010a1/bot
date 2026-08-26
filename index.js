@@ -256,7 +256,7 @@ function createNewConversation(userId) {
         role: "system",
         content:
           "Bạn là một AI assistant hữu ích trong Discord. " +
-          "Trả lời rõ ràng, tự nhiên, ưu tiên tiếng Việt nếu người dùng sử dụng tiếng Việt."
+          "Trả lời ngắn gọn , nếu người sử dụng kêu chi tiết thì trả lời chi tiết còn không thì thôi , ưu tiên tiếng Việt , mọi thông tin nên tra trên mạng rồi mới trả lời ."
       }
     ],
     botMessageIds: new Set()
@@ -701,26 +701,6 @@ client.on("messageCreate", async message => {
   const content = message.content.trim();
 
   if (!content) {
-    return;
-  }
-
-  // Link YouTube / Spotify / SoundCloud -> m!play
-  const musicUrl = extractMusicUrl(content);
-
-  if (musicUrl) {
-    await sendMusicCommand(message, `m!play ${musicUrl}`);
-    return;
-  }
-
-  // Exact word "stop"
-  if (containsExactWord(content, "stop")) {
-    await sendMusicCommand(message, "m!stop");
-    return;
-  }
-
-  // Exact word "skip"
-  if (containsExactWord(content, "skip")) {
-    await sendMusicCommand(message, "m!skip");
     return;
   }
 
