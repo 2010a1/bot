@@ -1,7 +1,7 @@
 {
-  "name": "discord-groq-ai-bot",
+  "name": "discord-gemini-ai-bot",
   "version": "1.0.0",
-  "description": "Discord.js v14 bot with Groq AI, voice logger and music command forwarding",
+  "description": "Discord.js v14 bot with Google Gemini AI, voice logger and music command forwarding",
   "main": "index.js",
   "type": "commonjs",
   "engines": {
@@ -11,9 +11,8 @@
     "start": "node index.js"
   },
   "dependencies": {
-    "@discordjs/voice": "^0.x.x",
-    "@google/genai": "^0.1.2", 
-    "discord.js": "^14.x.x",
-    "libsodium-wrappers": "^0.x.x"
+    "@discordjs/voice": "^0.19.2",
+    "@google/genai": "latest",
+    "discord.js": "^14.27.0"
   }
 }
