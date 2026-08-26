@@ -17,30 +17,36 @@ const {
   entersState
 } = require("@discordjs/voice");
 
-const Groq = require("groq-sdk");
+// SỬ DỤNG GOOGLE GENAI SDK (MỚI NHẤT)
+const { GoogleGenAI } = require("@google/genai");
 
 // ============================================================
 // ENVIRONMENT VARIABLES (CONFIG)
 // ============================================================
 
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const CLIENT_ID = process.env.CLIENT_ID;
 
-if (!DISCORD_TOKEN || !GROQ_API_KEY || !CLIENT_ID) {
-  console.error("❌ Thiếu DISCORD_TOKEN, GROQ_API_KEY hoặc CLIENT_ID trong Environment Variables.");
+if (!DISCORD_TOKEN || !GEMINI_API_KEY || !CLIENT_ID) {
+  console.error("❌ Thiếu DISCORD_TOKEN, GEMINI_API_KEY hoặc CLIENT_ID trong Environment Variables.");
   process.exit(1);
 }
 
 // ============================================================
-// GROQ
+// GEMINI AI (GOOGLE AI STUDIO)
 // ============================================================
 
-const groq = new Groq({
-  apiKey: GROQ_API_KEY
+const ai = new GoogleGenAI({
+  apiKey: GEMINI_API_KEY
 });
 
-const GROQ_MODEL = "openai/gpt-oss-120b";
+// Sử dụng model gemini-2.5-flash (tốc độ cao, thông minh, hỗ trợ ngữ cảnh dài)
+const GEMINI_MODEL = "gemini-2.5-flash"; 
+
+const SYSTEM_PROMPT = 
+  "Bạn là một AI assistant hữu ích trong Discord. " +
+  "Luôn tra Google/Web và kiểm tra nguồn mới nhất trước khi trả lời. Không được đoán hoặc bịa thông tin. Không chắc thì nói không biết. Trả lời bằng tiếng Việt, ngắn gọn, thường 1–3 câu. Giữ nguyên tên item/NPC/boss bằng tiếng Anh. Ưu tiên thông tin trên Wiki và nguồn uy tín.";
 
 // ============================================================
 // DISCORD CLIENT
@@ -66,7 +72,7 @@ const voiceConnections = new Map();
 // ============================================================
 
 const conversations = new Map();
-const MAX_HISTORY_MESSAGES = 21;
+const MAX_HISTORY_MESSAGES = 20;
 
 // ============================================================
 // VOICE LOG
@@ -181,7 +187,7 @@ function createHelpEmbed() {
   return new EmbedBuilder()
     .setColor(0x5865F2)
     .setTitle("🤖 Hướng dẫn sử dụng Discord Bot")
-    .setDescription("Bot hỗ trợ AI Groq, voice logger và tự động chuyển lệnh cho bot nhạc.")
+    .setDescription("Bot hỗ trợ Google Gemini AI, voice logger và tự động chuyển lệnh cho bot nhạc.")
     .addFields(
       {
         name: "📖 /help",
@@ -206,10 +212,10 @@ function createHelpEmbed() {
       {
         name: "💬 Tiếp tục hội thoại",
         value:
-          "Reply trực tiếp vào tin nhắn AI mà bot đã gửi. Bot sẽ lấy lịch sử hội thoại và gửi câu hỏi tiếp theo cho Groq."
+          "Reply trực tiếp vào tin nhắn AI mà bot đã gửi. Bot sẽ lấy lịch sử hội thoại và gửi câu hỏi tiếp theo cho Gemini."
       }
     )
-    .setFooter({ text: "Groq AI • Discord.js v14" })
+    .setFooter({ text: "Google Gemini AI • Discord.js v14" })
     .setTimestamp();
 }
 
@@ -244,14 +250,7 @@ async function sendMusicCommand(message, command) {
 
 function createNewConversation(userId) {
   const conversation = {
-    messages: [
-      {
-        role: "system",
-        content:
-          "Bạn là một AI assistant hữu ích trong Discord. " +
-          "Luôn tra Google/Web và kiểm tra nguồn mới nhất trước khi trả lời. Không được đoán hoặc bịa thông tin. Không chắc thì nói không biết. Trả lời bằng tiếng Việt, ngắn gọn, thường 1–3 câu. Giữ nguyên tên item/NPC/boss bằng tiếng Anh. Ưu tiên thông tin trên Wiki và nguồn uy tín."
-      }
-    ],
+    history: [], // Sẽ chứa { role: "user" | "model", parts: [{ text: "..." }] }
     botMessageIds: new Set()
   };
 
@@ -260,22 +259,31 @@ function createNewConversation(userId) {
 }
 
 function trimConversation(conversation) {
-  const systemMessage = conversation.messages[0];
-  const recentMessages = conversation.messages.slice(1).slice(-MAX_HISTORY_MESSAGES + 1);
-
-  conversation.messages = [systemMessage, ...recentMessages];
+  // Cắt bớt nếu lịch sử vượt quá số lượng tối đa
+  if (conversation.history.length > MAX_HISTORY_MESSAGES) {
+    conversation.history = conversation.history.slice(-MAX_HISTORY_MESSAGES);
+  }
 }
 
-async function askGroq(conversation) {
-  const completion = await groq.chat.completions.create({
-    model: GROQ_MODEL,
-    messages: conversation.messages,
-    temperature: 0.7,
-    max_tokens: 2048
-  });
+async function askGemini(conversation) {
+  try {
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: conversation.history,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        // (Tùy chọn) Bật Google Search Grounding để AI tra cứu thông tin thực tế
+        tools: [{ googleSearch: {} }] 
+      }
+    });
 
-  return completion.choices?.[0]?.message?.content ||
-    "Xin lỗi, AI không trả về nội dung.";
+    return response.text || "Xin lỗi, AI không trả về nội dung.";
+  } catch (error) {
+    console.error("❌ Lỗi Gemini API:", error);
+    return "❌ Lỗi kết nối đến Google Gemini AI.";
+  }
 }
 
 function splitMessage(content, maxLength = 1900) {
@@ -328,30 +336,28 @@ async function handleNewAIConversation(message) {
 
   const conversation = createNewConversation(message.author.id);
 
-  conversation.messages.push({
+  // Thêm tin nhắn của User vào lịch sử (Format của Gemini GenAI SDK)
+  conversation.history.push({
     role: "user",
-    content: prompt
+    parts: [{ text: prompt }]
   });
-
-  trimConversation(conversation);
 
   try {
     await message.channel.sendTyping();
 
-    const response = await askGroq(conversation);
+    const response = await askGemini(conversation);
 
-    conversation.messages.push({
-      role: "assistant",
-      content: response
+    // Thêm phản hồi của Model vào lịch sử
+    conversation.history.push({
+      role: "model",
+      parts: [{ text: response }]
     });
 
     trimConversation(conversation);
-
     await sendAIResponse(message, conversation, response);
   } catch (error) {
-    console.error("❌ Groq error:", error);
-
-    await message.channel.send("❌ Không thể kết nối với Groq AI lúc này.");
+    console.error("❌ Gemini error:", error);
+    await message.channel.send("❌ Không thể kết nối với Gemini AI lúc này.");
   }
 }
 
@@ -385,9 +391,10 @@ async function handleAIReply(message) {
 
   const conversation = ownerConversation.conversation;
 
-  conversation.messages.push({
+  // Cập nhật câu hỏi của User vào lịch sử
+  conversation.history.push({
     role: "user",
-    content: message.content
+    parts: [{ text: message.content }]
   });
 
   trimConversation(conversation);
@@ -395,23 +402,21 @@ async function handleAIReply(message) {
   try {
     await message.channel.sendTyping();
 
-    const response = await askGroq(conversation);
+    const response = await askGemini(conversation);
 
-    conversation.messages.push({
-      role: "assistant",
-      content: response
+    // Cập nhật câu trả lời vào lịch sử
+    conversation.history.push({
+      role: "model",
+      parts: [{ text: response }]
     });
 
     trimConversation(conversation);
-
     await sendAIResponse(message, conversation, response);
 
     return true;
   } catch (error) {
-    console.error("❌ Groq reply error:", error);
-
+    console.error("❌ Gemini reply error:", error);
     await message.channel.send("❌ Có lỗi khi tiếp tục hội thoại với AI.");
-
     return true;
   }
 }
