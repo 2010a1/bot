@@ -20,24 +20,15 @@ const {
 const Groq = require("groq-sdk");
 
 // ============================================================
-// CONFIG
+// ENVIRONMENT VARIABLES (CONFIG)
 // ============================================================
 
-const configPath = path.join(__dirname, "config.json");
-
-if (!fs.existsSync(configPath)) {
-  console.error("❌ Không tìm thấy config.json");
-  process.exit(1);
-}
-
-const config = require(configPath);
-
-const DISCORD_TOKEN = config.DISCORD_TOKEN;
-const GROQ_API_KEY = config.GROQ_API_KEY;
-const CLIENT_ID = config.CLIENT_ID;
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const CLIENT_ID = process.env.CLIENT_ID;
 
 if (!DISCORD_TOKEN || !GROQ_API_KEY || !CLIENT_ID) {
-  console.error("❌ config.json phải có DISCORD_TOKEN, GROQ_API_KEY và CLIENT_ID.");
+  console.error("❌ Thiếu DISCORD_TOKEN, GROQ_API_KEY hoặc CLIENT_ID trong Environment Variables.");
   process.exit(1);
 }
 
