@@ -207,13 +207,6 @@ function createHelpEmbed() {
         name: "💬 Tiếp tục hội thoại",
         value:
           "Reply trực tiếp vào tin nhắn AI mà bot đã gửi. Bot sẽ lấy lịch sử hội thoại và gửi câu hỏi tiếp theo cho Groq."
-      },
-      {
-        name: "🎵 Tự động phát nhạc",
-        value:
-          "Link YouTube / Spotify / SoundCloud → `m!play {link}`\n" +
-          "Từ khóa `stop` → `m!stop`\n" +
-          "Từ khóa `skip` → `m!skip`"
       }
     )
     .setFooter({ text: "Groq AI • Discord.js v14" })
@@ -256,7 +249,7 @@ function createNewConversation(userId) {
         role: "system",
         content:
           "Bạn là một AI assistant hữu ích trong Discord. " +
-          "Trả lời ngắn gọn , nếu người sử dụng kêu chi tiết thì trả lời chi tiết còn không thì thôi , ưu tiên tiếng Việt , mọi thông tin nên tra trên mạng rồi mới trả lời ."
+          "Luôn tra Google/Web và kiểm tra nguồn mới nhất trước khi trả lời. Không được đoán hoặc bịa thông tin. Không chắc thì nói không biết. Trả lời bằng tiếng Việt, ngắn gọn, thường 1–3 câu. Giữ nguyên tên item/NPC/boss bằng tiếng Anh. Ưu tiên thông tin trên Wiki và nguồn uy tín."
       }
     ],
     botMessageIds: new Set()
